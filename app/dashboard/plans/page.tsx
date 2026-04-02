@@ -44,7 +44,7 @@ export default function PlansPage() {
 
   const fetchData = async () => {
     const snap = await getDocs(collection(db, 'plans'));
-    const data = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as PlanData[];
+    const data = snap.docs.map((d) => ({ ...d.data(), id: d.id })) as PlanData[];
     data.sort((a, b) => a.price - b.price);
     setPlans(data);
     setLoading(false);

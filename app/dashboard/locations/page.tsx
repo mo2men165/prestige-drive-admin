@@ -40,7 +40,7 @@ export default function LocationsPage() {
 
   const fetchData = async () => {
     const snap = await getDocs(collection(db, 'locations'));
-    setLocations(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as LocationData[]);
+    setLocations(snap.docs.map((d) => ({ ...d.data(), id: d.id })) as LocationData[]);
     setLoading(false);
   };
 

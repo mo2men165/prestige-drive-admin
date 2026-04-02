@@ -52,7 +52,7 @@ export default function CarsPage() {
 
   const fetchData = async () => {
     const snap = await getDocs(collection(db, 'cars'));
-    const data = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as CarData[];
+    const data = snap.docs.map((d) => ({ ...d.data(), id: d.id })) as CarData[];
     setCars(data);
     setLoading(false);
   };

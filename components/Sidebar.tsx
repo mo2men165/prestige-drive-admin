@@ -10,6 +10,7 @@ const navItems = [
   { label: 'Plans', href: '/dashboard/plans', icon: '◈' },
   { label: 'Add-on Options', href: '/dashboard/options', icon: '◇' },
   { label: 'Protection Details', href: '/dashboard/protection', icon: '△' },
+  { label: 'Special services', href: '/dashboard/special-services', icon: '◐' },
   { label: 'Bookings', href: '/dashboard/bookings', icon: '▤' },
 ];
 

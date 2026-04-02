@@ -12,9 +12,10 @@ interface DataTableProps {
   onEdit?: (row: Record<string, unknown>) => void;
   onDelete?: (row: Record<string, unknown>) => void;
   idField?: string;
+  editLabel?: string;
 }
 
-export default function DataTable({ columns, data, onEdit, onDelete, idField = 'id' }: DataTableProps) {
+export default function DataTable({ columns, data, onEdit, onDelete, idField = 'id', editLabel = 'Edit' }: DataTableProps) {
   if (data.length === 0) {
     return (
       <div className="text-center py-12 text-gray-400 text-sm">
@@ -55,7 +56,7 @@ export default function DataTable({ columns, data, onEdit, onDelete, idField = '
                       onClick={() => onEdit(row)}
                       className="text-xs text-blue-600 hover:text-blue-800 font-medium"
                     >
-                      Edit
+                      {editLabel}
                     </button>
                   )}
                   {onDelete && (

@@ -37,7 +37,7 @@ export default function OptionsPage() {
 
   const fetchData = async () => {
     const snap = await getDocs(collection(db, 'additionalOptions'));
-    setOptions(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as OptionData[]);
+    setOptions(snap.docs.map((d) => ({ ...d.data(), id: d.id })) as OptionData[]);
     setLoading(false);
   };
 
