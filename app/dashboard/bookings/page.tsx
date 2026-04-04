@@ -59,6 +59,13 @@ function csvEscape(val: string | number | undefined | null): string {
     : s;
 }
 
+function formatGbp(n: number): string {
+  return `£${n.toLocaleString('en-GB', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
 function generatePageNumbers(current: number, total: number): (number | '...')[] {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
   const pages: (number | '...')[] = [1];
@@ -213,6 +220,11 @@ export default function BookingsPage() {
 
   const stats = useMemo(() => {
     const rev = computeRevenueMetrics(bookings);
+    const sumForStatus = (status: BookingStatus) =>
+      bookings
+        .filter((b) => b.status === status)
+        .reduce((sum, b) => sum + bookingMonetaryTotal(b), 0);
+    const allPriceTotal = bookings.reduce((sum, b) => sum + bookingMonetaryTotal(b), 0);
     return {
       total: bookings.length,
       booked: bookings.filter((b) => b.status === 'booked').length,
@@ -222,6 +234,14 @@ export default function BookingsPage() {
       completed: bookings.filter((b) => b.status === 'completed').length,
       cancelled: bookings.filter((b) => b.status === 'cancelled').length,
       refunded: bookings.filter((b) => b.status === 'cancelled_refunded').length,
+      allPriceTotal,
+      bookedPriceTotal: sumForStatus('booked'),
+      awaitingPaymentPriceTotal: sumForStatus('awaiting_payment'),
+      upcomingPriceTotal: sumForStatus('upcoming'),
+      inProgressPriceTotal: sumForStatus('in_progress'),
+      completedPriceTotal: sumForStatus('completed'),
+      cancelledPriceTotal: sumForStatus('cancelled'),
+      refundedPriceTotal: sumForStatus('cancelled_refunded'),
       revenueNet: rev.net,
       revenueRefunds: rev.refunded,
     };
@@ -233,6 +253,18 @@ export default function BookingsPage() {
       counts[s.key] = bookings.filter((b) => b.status === s.key).length;
     });
     return counts;
+  }, [bookings]);
+
+  const statusPriceTotals = useMemo(() => {
+    const totals: Record<string, number> = {
+      all: bookings.reduce((sum, b) => sum + bookingMonetaryTotal(b), 0),
+    };
+    BOOKING_STATUSES.forEach((s) => {
+      totals[s.key] = bookings
+        .filter((b) => b.status === s.key)
+        .reduce((sum, b) => sum + bookingMonetaryTotal(b), 0);
+    });
+    return totals;
   }, [bookings]);
 
   /* ---- Handlers ---- */
@@ -420,12 +452,27 @@ export default function BookingsPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
-        <StatCard label="Total" value={stats.total} />
-        <StatCard label="Booked" value={stats.booked} accent="slate" />
-        <StatCard label="Awaiting payment" value={stats.awaitingPayment} accent="yellow" />
-        <StatCard label="Upcoming" value={stats.upcoming} accent="blue" />
-        <StatCard label="In progress" value={stats.inProgress} accent="amber" />
-        <StatCard label="Completed" value={stats.completed} accent="emerald" />
+        <StatCard label="Total" value={stats.total} totalPounds={stats.allPriceTotal} />
+        <StatCard label="Booked" value={stats.booked} totalPounds={stats.bookedPriceTotal} accent="slate" />
+        <StatCard
+          label="Awaiting payment"
+          value={stats.awaitingPayment}
+          totalPounds={stats.awaitingPaymentPriceTotal}
+          accent="yellow"
+        />
+        <StatCard label="Upcoming" value={stats.upcoming} totalPounds={stats.upcomingPriceTotal} accent="blue" />
+        <StatCard
+          label="In progress"
+          value={stats.inProgress}
+          totalPounds={stats.inProgressPriceTotal}
+          accent="amber"
+        />
+        <StatCard
+          label="Completed"
+          value={stats.completed}
+          totalPounds={stats.completedPriceTotal}
+          accent="emerald"
+        />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
         <div className="bg-white border border-gray-200 rounded-xl p-4 border-l-4 border-l-gray-900">
@@ -457,11 +504,17 @@ export default function BookingsPage() {
         <div className="bg-white border border-gray-200 rounded-xl p-4 border-l-4 border-l-red-300 flex items-center gap-6">
           <div>
             <p className="text-xl font-bold text-gray-900">{stats.cancelled}</p>
+            <p className="text-sm font-semibold text-gray-700 tabular-nums mt-0.5">
+              {formatGbp(stats.cancelledPriceTotal)}
+            </p>
             <p className="text-xs text-gray-500 mt-0.5">Cancelled</p>
           </div>
           <div className="w-px h-10 bg-gray-200" />
           <div>
             <p className="text-xl font-bold text-gray-900">{stats.refunded}</p>
+            <p className="text-sm font-semibold text-gray-700 tabular-nums mt-0.5">
+              {formatGbp(stats.refundedPriceTotal)}
+            </p>
             <p className="text-xs text-gray-500 mt-0.5">Cancelled &amp; refunded</p>
           </div>
         </div>
@@ -474,6 +527,7 @@ export default function BookingsPage() {
           onClick={() => setStatusFilter('all')}
           label="All"
           count={statusCounts.all}
+          totalPounds={statusPriceTotals.all}
         />
         {BOOKING_STATUSES.map((s) => (
           <FilterTab
@@ -482,6 +536,7 @@ export default function BookingsPage() {
             onClick={() => setStatusFilter(s.key)}
             label={s.label}
             count={statusCounts[s.key] ?? 0}
+            totalPounds={statusPriceTotals[s.key] ?? 0}
           />
         ))}
       </div>
@@ -927,10 +982,12 @@ function StatCard({
   label,
   value,
   accent,
+  totalPounds,
 }: {
   label: string;
   value: string | number;
   accent?: 'emerald' | 'blue' | 'amber' | 'slate' | 'yellow';
+  totalPounds?: number;
 }) {
   const accentMap: Record<string, string> = {
     emerald: 'border-l-emerald-400',
@@ -946,6 +1003,11 @@ function StatCard({
       className={`bg-white border border-gray-200 rounded-xl p-4 border-l-4 ${borderClass}`}
     >
       <p className="text-2xl font-bold text-gray-900">{value}</p>
+      {totalPounds !== undefined && (
+        <p className="text-sm font-semibold text-gray-700 tabular-nums mt-0.5">
+          {formatGbp(totalPounds)}
+        </p>
+      )}
       <p className="text-xs text-gray-500 mt-1">{label}</p>
     </div>
   );
@@ -956,11 +1018,13 @@ function FilterTab({
   onClick,
   label,
   count,
+  totalPounds,
 }: {
   active: boolean;
   onClick: () => void;
   label: string;
   count: number;
+  totalPounds: number;
 }) {
   return (
     <button
@@ -970,7 +1034,10 @@ function FilterTab({
       }`}
     >
       {label}
-      <span className="ml-1.5 text-xs text-gray-400">{count}</span>
+      <span className="ml-1.5 text-xs font-normal tabular-nums">
+        <span className="text-gray-400">{count}</span>
+        <span className="text-gray-500"> · {formatGbp(totalPounds)}</span>
+      </span>
     </button>
   );
 }
